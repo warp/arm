@@ -22,25 +22,29 @@ board.on('ready', () => {
     pin: 'A0',
     range: [BASE_MIN, BASE_MAX]
   })
+  base.home()
 
   const horizontal = new five.Servo({
     pin: 'A1',
     range: [HORIZONTAL_MIN, HORIZONTAL_MAX]
   })
+  horizontal.home()
 
   const vertical = new five.Servo({
     pin: 'A2',
     range: [VERTICAL_MIN, VERTICAL_MAX]
   })
+  vertical.home()
 
   const gripper = new five.Servo({
     pin: 'A3',
     range: [GRIPPER_MIN, GRIPPER_MAX]
   })
+  gripper.home()
 
   ioHook.on('mousemove', ({ x, y }) => {
     base.to(x / 5)
-    horizontal.to(y / 4)
+    horizontal.to(HORIZONTAL_MAX - (y / 4))
   })
 
   let verticalPosition = (VERTICAL_MIN + VERTICAL_MAX) / 2
