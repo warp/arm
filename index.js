@@ -23,6 +23,10 @@ const board = new five.Board({
   repl: false,
 })
 
+process.on('SIGINT', function() {
+  board.io.transport.close()
+})
+
 board.on('ready', () => {
   const base = new five.Servo({
     pin: 'A0',
@@ -76,10 +80,6 @@ board.on('ready', () => {
     gripper.to(gripperPosition)
   })
 
-  board.on('exit', () => {
-    console.log('board.exit')
-    ioHook.unload()
-  })
   ioHook.disableClickPropagation()
   ioHook.start()
 })
