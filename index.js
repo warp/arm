@@ -4,22 +4,15 @@ const mockFirmata = require('mock-firmata')
 
 const TEST = process.env.NODE_ENV === 'test'
 
-const BASE_MIN = 0
-const BASE_MAX = 180
-
-const HORIZONTAL_MIN = 70
-const HORIZONTAL_MAX = 180
-
-const VERTICAL_MIN = 30
-const VERTICAL_MAX = 120
-
-const GRIPPER_MIN = 55
-const GRIPPER_MAX = 160
-
-const VENDOR_ID = 1452
-const PRODUCT_ID = 829
 const DEVICE_PATH =
   'IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/XHC1@14/XHC1@14000000/HS01@14100000/Gamesir-G3s 2.10@14100000/IOUSBHostInterface@0/IOUSBHostHIDDevice@14100000,0'
+
+const SERVO_RANGE = {
+  base: [0, 180],
+  horizontal: [70, 180],
+  vertical: [30, 120],
+  gripper: [55, 160],
+}
 
 const GAMEPAD = {
   leftX: 1,
@@ -30,7 +23,7 @@ const GAMEPAD = {
   rightTrigger: 6,
 }
 
-const normalize = (value, min, max) => (max - min) * (value / 256) + min
+const normalize = (value, [min, max]) => (max - min) * (value / 256) + min
 
 const gamepad = new HID.HID(DEVICE_PATH)
 
@@ -42,33 +35,29 @@ const board = new five.Board({
 board.on('ready', () => {
   const base = new five.Servo({
     pin: 'A0',
-    range: [BASE_MIN, BASE_MAX],
+    range: SERVO_RANGE.base,
   })
 
   const horizontal = new five.Servo({
     pin: 'A1',
-    range: [HORIZONTAL_MIN, HORIZONTAL_MAX],
+    range: SERVO_RANGE.horizontal,
   })
 
   const vertical = new five.Servo({
     pin: 'A2',
-    range: [VERTICAL_MIN, VERTICAL_MAX],
+    range: SERVO_RANGE.vertical,
   })
 
   const gripper = new five.Servo({
     pin: 'A3',
-    range: [GRIPPER_MIN, GRIPPER_MAX],
+    range: SERVO_RANGE.gripper,
   })
 
   gamepad.on('data', data => {
-    base.to(normalize(data[GAMEPAD.leftX], BASE_MIN, BASE_MAX))
-    horizontal.to(
-      normalize(256 - data[GAMEPAD.leftY], HORIZONTAL_MIN, HORIZONTAL_MAX)
-    )
-    vertical.to(normalize(data[GAMEPAD.rightY], VERTICAL_MIN, VERTICAL_MAX))
-    gripper.to(
-      normalize(256 - data[GAMEPAD.rightTrigger], GRIPPER_MIN, GRIPPER_MAX)
-    )
+    base.to(normalize(data[GAMEPAD.leftX], SERVO_RANGE.base))
+    horizontal.to(normalize(256 - data[GAMEPAD.leftY], SERVO_RANGE.horizontal))
+    vertical.to(normalize(data[GAMEPAD.rightY], SERVO_RANGE.vertical))
+    gripper.to(normalize(256 - data[GAMEPAD.rightTrigger], SERVO_RANGE.gripper))
   })
 
   process.on('SIGINT', () => {
