@@ -1,4 +1,4 @@
-const ioHook = require('iohook')
+const HID = require('node-hid')
 const five = require('johnny-five')
 const mockFirmata = require('mock-firmata')
 
@@ -16,15 +16,18 @@ const VERTICAL_MAX = 120
 const GRIPPER_MIN = 55
 const GRIPPER_MAX = 160
 
-const clamp = (value, min, max) => Math.max(Math.min(value, max), min)
+const VENDOR_ID = 1452
+const PRODUCT_ID = 829
+const DEVICE_PATH =
+  'IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/XHC1@14/XHC1@14000000/HS01@14100000/Gamesir-G3s 2.10@14100000/IOUSBHostInterface@0/IOUSBHostHIDDevice@14100000,0'
+
+const normalize = (value, min, max) => (max - min) * (value / 256) + min
+
+const gamepad = new HID.HID(DEVICE_PATH)
 
 const board = new five.Board({
   io: TEST ? new mockFirmata.Firmata() : undefined,
   repl: false,
-})
-
-process.on('SIGINT', function() {
-  board.io.transport.close()
 })
 
 board.on('ready', () => {
@@ -32,56 +35,37 @@ board.on('ready', () => {
     pin: 'A0',
     range: [BASE_MIN, BASE_MAX],
   })
-  base.home()
 
   const horizontal = new five.Servo({
     pin: 'A1',
     range: [HORIZONTAL_MIN, HORIZONTAL_MAX],
   })
-  horizontal.home()
 
   const vertical = new five.Servo({
     pin: 'A2',
     range: [VERTICAL_MIN, VERTICAL_MAX],
   })
-  vertical.home()
 
   const gripper = new five.Servo({
     pin: 'A3',
     range: [GRIPPER_MIN, GRIPPER_MAX],
   })
-  gripper.home()
 
-  ioHook.on('mousemove', ({ x, y }) => {
-    console.log('mousemove', { x, y })
-    base.to(x / 5)
-    horizontal.to(HORIZONTAL_MAX - y / 4)
+  gamepad.on('data', data => {
+    base.to(normalize(data[1], BASE_MIN, BASE_MAX))
+    horizontal.to(normalize(256 - data[2], HORIZONTAL_MIN, HORIZONTAL_MAX))
+    vertical.to(normalize(data[4], VERTICAL_MIN, VERTICAL_MAX))
+    gripper.to(normalize(256 - data[6], GRIPPER_MIN, GRIPPER_MAX))
   })
 
-  let verticalPosition = (VERTICAL_MIN + VERTICAL_MAX) / 2
-  ioHook.on('mousewheel', ({ rotation }) => {
-    console.log('mousewheel', { rotation })
-    verticalPosition = clamp(
-      verticalPosition + rotation * 2,
-      VERTICAL_MIN,
-      VERTICAL_MAX
-    )
-    vertical.to(verticalPosition)
+  process.on('SIGINT', () => {
+    gamepad.close()
+    base.stop()
+    horizontal.stop()
+    vertical.stop()
+    gripper.stop()
+    board.io.transport.close()
   })
-
-  let gripperPosition = GRIPPER_MIN
-  ioHook.on('mousedown', ({ button }) => {
-    console.log('mousedown', { button })
-    gripperPosition = clamp(
-      button === 1 ? gripperPosition - 5 : gripperPosition + 5,
-      GRIPPER_MIN,
-      GRIPPER_MAX
-    )
-    gripper.to(gripperPosition)
-  })
-
-  ioHook.disableClickPropagation()
-  ioHook.start()
 })
 
 if (TEST) board.emit('ready', null)
