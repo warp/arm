@@ -21,6 +21,15 @@ const PRODUCT_ID = 829
 const DEVICE_PATH =
   'IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/XHC1@14/XHC1@14000000/HS01@14100000/Gamesir-G3s 2.10@14100000/IOUSBHostInterface@0/IOUSBHostHIDDevice@14100000,0'
 
+const GAMEPAD = {
+  leftX: 1,
+  leftY: 2,
+  rightX: 3,
+  rightY: 4,
+  leftTrigger: 5,
+  rightTrigger: 6,
+}
+
 const normalize = (value, min, max) => (max - min) * (value / 256) + min
 
 const gamepad = new HID.HID(DEVICE_PATH)
@@ -52,10 +61,14 @@ board.on('ready', () => {
   })
 
   gamepad.on('data', data => {
-    base.to(normalize(data[1], BASE_MIN, BASE_MAX))
-    horizontal.to(normalize(256 - data[2], HORIZONTAL_MIN, HORIZONTAL_MAX))
-    vertical.to(normalize(data[4], VERTICAL_MIN, VERTICAL_MAX))
-    gripper.to(normalize(256 - data[6], GRIPPER_MIN, GRIPPER_MAX))
+    base.to(normalize(data[GAMEPAD.leftX], BASE_MIN, BASE_MAX))
+    horizontal.to(
+      normalize(256 - data[GAMEPAD.leftY], HORIZONTAL_MIN, HORIZONTAL_MAX)
+    )
+    vertical.to(normalize(data[GAMEPAD.rightY], VERTICAL_MIN, VERTICAL_MAX))
+    gripper.to(
+      normalize(256 - data[GAMEPAD.rightTrigger], GRIPPER_MIN, GRIPPER_MAX)
+    )
   })
 
   process.on('SIGINT', () => {
