@@ -11,7 +11,14 @@ const SERVO_RANGE = {
   base: [0, 180],
   horizontal: [70, 180],
   vertical: [30, 120],
-  gripper: [55, 160],
+  gripper: [55, 125],
+}
+
+const SERVO_POSITION = {
+  base: 90,
+  horizontal: 125,
+  vertical: 75,
+  gripper: 90,
 }
 
 const GAMEPAD = {
@@ -23,7 +30,20 @@ const GAMEPAD = {
   rightTrigger: 6,
 }
 
-const normalize = (value, [min, max]) => (max - min) * (value / 256) + min
+const clamp = (axis, value) => {
+  const [min, max] = SERVO_RANGE[axis]
+  return Math.min(Math.max(value, min), max)
+}
+
+const relativePosition = (axis, value) => {
+  SERVO_POSITION[axis] = clamp(axis, SERVO_POSITION[axis] + (value - 128) / 128)
+  return SERVO_POSITION[axis]
+}
+
+const absolutePosition = (axis, value) => {
+  const [min, max] = SERVO_RANGE[axis]
+  return (max - min) * (value / 256) + min
+}
 
 const gamepad = new HID.HID(DEVICE_PATH)
 
@@ -36,29 +56,41 @@ board.on('ready', () => {
   const base = new five.Servo({
     pin: 'A0',
     range: SERVO_RANGE.base,
+    center: true,
   })
 
   const horizontal = new five.Servo({
     pin: 'A1',
     range: SERVO_RANGE.horizontal,
+    center: true,
   })
 
   const vertical = new five.Servo({
     pin: 'A2',
     range: SERVO_RANGE.vertical,
+    center: true,
   })
 
   const gripper = new five.Servo({
     pin: 'A3',
     range: SERVO_RANGE.gripper,
+    center: true,
   })
 
+  let input
+
   gamepad.on('data', data => {
-    base.to(normalize(data[GAMEPAD.leftX], SERVO_RANGE.base))
-    horizontal.to(normalize(256 - data[GAMEPAD.leftY], SERVO_RANGE.horizontal))
-    vertical.to(normalize(data[GAMEPAD.rightY], SERVO_RANGE.vertical))
-    gripper.to(normalize(256 - data[GAMEPAD.rightTrigger], SERVO_RANGE.gripper))
+    input = data
   })
+
+  setInterval(() => {
+    if (!input) return
+
+    base.to(relativePosition('base', input[GAMEPAD.leftX]))
+    horizontal.to(relativePosition('horizontal', 256 - input[GAMEPAD.leftY]))
+    vertical.to(relativePosition('vertical', input[GAMEPAD.rightY]))
+    gripper.to(absolutePosition('gripper', 256 - input[GAMEPAD.rightTrigger]))
+  }, 10)
 
   process.on('SIGINT', () => {
     gamepad.close()
