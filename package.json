@@ -5,6 +5,9 @@
     "mock-firmata": "^0.2.0",
     "node-hid": "^0.7.9"
   },
+  "resolutions": {
+    "johnny-five/**/serialport": "^8.0.2"
+  },
   "scripts": {
     "start": "node ./index.js"
   }
