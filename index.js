@@ -4,8 +4,16 @@ const mockFirmata = require('mock-firmata')
 
 const TEST = process.env.NODE_ENV === 'test'
 
-const DEVICE_PATH =
-  'IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/XHC1@14/XHC1@14000000/HS01@14100000/Gamesir-G3s 2.10@14100000/IOUSBHostInterface@0/IOUSBHostHIDDevice@14100000,0'
+const args = process.argv.slice(2)
+const [productName = 'Gamesir-G3s 2.10'] = args
+
+const devices = HID.devices()
+const device = devices.find(device => device.product === productName)
+
+if (!device) {
+  const productNames = devices.map(device => device.product).join(', ')
+  throw `Unable to find ${productName} in ${productNames}`
+}
 
 const SERVO_RANGE = {
   base: [0, 180],
@@ -45,7 +53,7 @@ const absolutePosition = (axis, value) => {
   return (max - min) * (value / 256) + min
 }
 
-const gamepad = new HID.HID(DEVICE_PATH)
+const gamepad = new HID.HID(device.path)
 
 const board = new five.Board({
   io: TEST ? new mockFirmata.Firmata() : undefined,
